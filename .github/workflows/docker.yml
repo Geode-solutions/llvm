@@ -1,0 +1,34 @@
+name: Docker Image CD
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+    - name: Test
+      run: |
+        curl -H "Accept: application/vnd.github.VERSION.raw" -H "Authorization: token ${{ secrets.TOKEN }}" https://api.github.com/repos/Geode-solutions/open-license-manager/contents/projects/geode/geode.lic\?ref\=master > ${{ github.workspace }}/geode.lic
+        pip install pytest
+        pip install -r requirements.txt
+        pytest -v tests
+      env:
+        FLASK_DEBUG: false
+        ID: 123456
+        GEODE_LICENSE_LOCATION: ${{ github.workspace }}/geode.lic
+    
+  deploy:
+    needs: test
+    uses: Geode-solutions/actions/.github/workflows/docker-build-squash-push.yml@master
+    with:
+      image_name: 'website-back'
+      tag: ${{ github.ref_name }}
+    secrets: 
+      TOKEN: ${{secrets.GITHUB_TOKEN}}
+      LICENSE_TOKEN: ${{ secrets.TOKEN }}
